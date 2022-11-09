@@ -29,7 +29,7 @@ namespace Genersoft.GS.HBYHQYSCore.QYS
             }
             catch (Exception ex)
             {
-                throw new GSPException("发生错误:" + ex.Message, ErrorLevel.Error);
+                throw new GSPException("1发生错误:" + ex.Message, ErrorLevel.Error);
             }
         }
     }
