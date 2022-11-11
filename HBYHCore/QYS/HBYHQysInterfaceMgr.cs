@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Web;
 using Genersoft.GS.HBYHQYSCommon;
 using Genersoft.Platform.Core.Error;
 
@@ -14,18 +10,8 @@ namespace Genersoft.GS.HBYHQYSCore.QYS
         {
             try
             {
-                //lcfile = File.Create(@"D:\Temp\png001.png");
-
-                // Restful.Post(Restful.RestAddr.CREATEBYFILE_ADDR_TEST, "");
-
-                //string json = jss.Serialize(GI);
-                //HBYHPMSCommon.CommonMgr.WriteLogFile("json:" + json);
-
-                //Common.WMS_RtnMessege rtn = Common.Restful.Post(Common.Restful.RestAddr.GIREQBILLS_RESTFUL_ADDR, json);
-                //HBYHPMSCommon.CommonMgr.WriteLogFile("json1:" + Common.Restful.RestAddr.GIREQBILLS_RESTFUL_ADDR);
-                // HBYHPMSCommon.CommonMgr.WriteLogFile("rtn:" + rtn.msg);
                 String key = Restful.GetSignature();
-
+                Console.WriteLine("ceshi");
             }
             catch (Exception ex)
             {

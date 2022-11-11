@@ -4,6 +4,7 @@ using System.Linq;
 using System.Web;
 using System.Net;
 using System.IO;
+using System.Net.Http;
 using System.Text;
 using System.Web.Script.Serialization;
 using System.Security.Cryptography;
@@ -13,6 +14,10 @@ namespace Genersoft.GS.HBYHQYSCommon
     public class Restful
     {
         static JavaScriptSerializer jss = new JavaScriptSerializer();
+        
+        /*
+         * 
+         */
         public static QYS_RtnMessege Post(string PostURL, string PostData)
         {
             QYS_RtnMessege cResult;
@@ -21,6 +26,9 @@ namespace Genersoft.GS.HBYHQYSCommon
                 HttpWebRequest request = (HttpWebRequest)HttpWebRequest.Create(PostURL);
                 request.ContentType = "application/json";
                 request.Method = "POST";
+                request.Headers.Add("x-qys-accesstoken",ServerAddr.QYS_ACCESSTOKEN);
+                request.Headers.Add("x-qys-timestamp",Gettimestamp());
+                request.Headers.Add("x-qys-signature",GetSignature());
                 Stream reqStream = null;
                 byte[] postData = Encoding.UTF8.GetBytes(PostData);
                 reqStream = request.GetRequestStream();
@@ -32,6 +40,29 @@ namespace Genersoft.GS.HBYHQYSCommon
                 StreamReader streamReader = new StreamReader(responseStream, Encoding.UTF8);
                 string responseHtml = streamReader.ReadToEnd();
                 cResult = jss.Deserialize<QYS_RtnMessege>(responseHtml);
+            }
+            catch (Exception ex)
+            {
+                cResult = new QYS_RtnMessege();
+                cResult.code = "-1";
+                cResult.message = "发生错误：" + ex.Message;
+            }
+            return cResult;
+        }
+        
+        public static QYS_RtnMessege Post_document(string PostURL, string PostData)
+        {
+            QYS_RtnMessege cResult;
+            try
+            {
+                HttpClient client = new HttpClient();
+                //添加契约锁要求的headers
+                //由于创建合同用的Content-type为multipart/form-data，所以要定义一个MultipartFormDataContent来放入文件
+                MultipartFormDataContent formContent = new MultipartFormDataContent();
+                formContent.Add(new StringContent("123"), "title");
+                formContent.Add(new StringContent("123"), "fileType");
+                var result = client.PostAsync(PostURL, formContent).Result.ToString();
+                cResult = jss.Deserialize<QYS_RtnMessege>(result);
             }
             catch (Exception ex)
             {
@@ -60,7 +91,7 @@ namespace Genersoft.GS.HBYHQYSCommon
         public struct RestAddr
         {
             /// <summary>
-            /// 文档创建接口地址-测试地址
+            /// 契约锁文档创建接口地址-测试地址
             /// </summary>
             public const string CREATEBYFILE_ADDR_TEST = @"http://" + ServerAddr.TEST_SERVER_IP + ":9182/v2/document/createbyfile";
             /// <summary>
@@ -78,6 +109,12 @@ namespace Genersoft.GS.HBYHQYSCommon
             long timeStamp = DateTimeOffset.Now.ToUnixTimeSeconds(); // 相差秒数
             string key = GetMD5(ServerAddr.QYS_ACCESSTOKEN + ServerAddr.QYS_SECRETKEY + timeStamp);
             return key;
+        }
+        
+        public static string Gettimestamp()
+        {
+            long timeStamp = DateTimeOffset.Now.ToUnixTimeSeconds(); // 相差秒数
+            return timeStamp.ToString();
         }
 
         /**

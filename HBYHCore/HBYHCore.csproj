@@ -15,7 +15,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Genersoft.GS.HBYHQYSCore</RootNamespace>
     <AssemblyName>Genersoft.GS.HBYHQYSCore</AssemblyName>
-    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <UseIISExpress>true</UseIISExpress>
     <IISExpressSSLPort />
     <IISExpressAnonymousAuthentication />
@@ -67,9 +67,15 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.CSharp" />
+    <Reference Include="Newtonsoft.Json, Version=3.5.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed">
+      <HintPath>..\..\DLL\GSP\Newtonsoft.Json.dll</HintPath>
+    </Reference>
     <Reference Include="Newtonsoft.Json, Version=6.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\DLL\Newtonsoft.Json.dll</HintPath>
+    </Reference>
+    <Reference Include="QiyuesuoSDK, Version=3.2.7.0, Culture=neutral, PublicKeyToken=null">
+      <HintPath>..\..\DLL\QiyuesuoSDK.dll</HintPath>
     </Reference>
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="System.Web.DynamicData" />
@@ -102,9 +108,9 @@
     <Content Include="Web.config" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="HBYHInterfaceMgr.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="QYS\HBYHQysInterfaceMgr.cs" />
+    <Compile Include="QYS\UseSDKshixian.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\HBYHCommon\HBYHCommon.csproj">
