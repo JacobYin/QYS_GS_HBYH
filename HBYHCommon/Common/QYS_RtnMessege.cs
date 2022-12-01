@@ -12,10 +12,12 @@ namespace Genersoft.GS.HBYHQYSCommon
         /// 状态[200:成功，500失败]
         /// </summary>
         public string code { get; set; }
+
         /// <summary>
         /// 消息
         /// </summary>
         public string message { get; set; }
+
         /// <summary>
         /// 返回数据内容
         /// </summary>

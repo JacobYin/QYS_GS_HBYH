@@ -1,10 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Web;
 using System.Net;
 using System.IO;
-using System.Net.Http;
 using System.Text;
 using System.Web.Script.Serialization;
 using System.Security.Cryptography;
@@ -14,78 +11,105 @@ namespace Genersoft.GS.HBYHQYSCommon
     public class Restful
     {
         static JavaScriptSerializer jss = new JavaScriptSerializer();
-        
-        /*
-         * 
-         */
+
         public static QYS_RtnMessege Post(string PostURL, string PostData)
         {
             QYS_RtnMessege cResult;
+            HttpWebRequest request = null;
+            Stream reqStream = null;
             try
             {
-                HttpWebRequest request = (HttpWebRequest)HttpWebRequest.Create(PostURL);
-                request.ContentType = "application/json";
+                request = (HttpWebRequest) HttpWebRequest.Create(PostURL);
                 request.Method = "POST";
-                request.Headers.Add("x-qys-accesstoken",ServerAddr.QYS_ACCESSTOKEN);
-                request.Headers.Add("x-qys-timestamp",Gettimestamp());
-                request.Headers.Add("x-qys-signature",GetSignature());
-                Stream reqStream = null;
+                request.Accept = "text/plain,application/json";
+                request.UserAgent = "privateapp-csharp-api-client";
+                request.ContentType = "application/json";
+
+                request.Headers.Add("x-qys-accesstoken", ServerAddr.QYS_ACCESSTOKEN);
+                request.Headers.Add("x-qys-timestamp", Gettimestamp());
+                request.Headers.Add("x-qys-signature", GetSignature());
+                request.SendChunked = true;
+
                 byte[] postData = Encoding.UTF8.GetBytes(PostData);
                 reqStream = request.GetRequestStream();
                 //写入流
                 reqStream.Write(postData, 0, postData.Length);
                 //获取响应，即发送请求
-                HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+                HttpWebResponse response = (HttpWebResponse) request.GetResponse();
                 Stream responseStream = response.GetResponseStream();
                 StreamReader streamReader = new StreamReader(responseStream, Encoding.UTF8);
                 string responseHtml = streamReader.ReadToEnd();
                 cResult = jss.Deserialize<QYS_RtnMessege>(responseHtml);
+                HBYHCWCommon.CommonMgr.WriteLogFile("所写内容：" + responseHtml);
             }
             catch (Exception ex)
             {
                 cResult = new QYS_RtnMessege();
-                cResult.code = "-1";
                 cResult.message = "发生错误：" + ex.Message;
             }
+
             return cResult;
         }
-        
-        public static QYS_RtnMessege Post_document(string PostURL, string PostData)
+
+
+        public static string Post_document(string PostURL, string filename, string filetype,
+            string djnm)
         {
             QYS_RtnMessege cResult;
+            HttpWebRequest request = null;
+            Stream stream = null;
             try
             {
-                HttpClient client = new HttpClient();
-                //添加契约锁要求的headers
-                //由于创建合同用的Content-type为multipart/form-data，所以要定义一个MultipartFormDataContent来放入文件
-                MultipartFormDataContent formContent = new MultipartFormDataContent();
-                formContent.Add(new StringContent("123"), "title");
-                formContent.Add(new StringContent("123"), "fileType");
-                var result = client.PostAsync(PostURL, formContent).Result.ToString();
-                cResult = jss.Deserialize<QYS_RtnMessege>(result);
+                request = (HttpWebRequest) WebRequest.Create(PostURL);
+                request.Method = "POST";
+                request.Accept = "text/plain,application/json";
+                request.UserAgent = "privateapp-csharp-api-client";
+
+                request.Headers.Add("x-qys-accesstoken", ServerAddr.QYS_ACCESSTOKEN);
+                request.Headers.Add("x-qys-timestamp", Gettimestamp());
+                request.Headers.Add("x-qys-signature", GetSignature());
+                request.ContentType = "multipart/form-data; boundary=" + ServerAddr.Boundary;
+                request.SendChunked = true;
+                stream = request.GetRequestStream();
+
+                WriteMultipart(ref stream, "title", filename);
+                WriteMultipart(ref stream, "fileType", filetype);
+                var path = $@"\\Ser158\ht_fj\{djnm}\{filename}.{filetype}";
+
+                WriteMultipart(ref stream, "file", filename, $"application/{filetype}", new FileInfo(path));
+
+                Byte[] data = Encoding.UTF8.GetBytes(new StringBuilder().Append(ServerAddr.Dash)
+                    .Append(ServerAddr.Boundary).Append(ServerAddr.Dash)
+                    .Append(ServerAddr.Newline).ToString());
+                stream.Write(data, 0, data.Length);
+                stream.Flush();
+
+                HttpWebResponse response = (HttpWebResponse) request.GetResponse();
+                Stream responseStream = response.GetResponseStream();
+                StreamReader streamReader = new StreamReader(responseStream, Encoding.UTF8);
+                string responseHtml = streamReader.ReadToEnd();
+                cResult = jss.Deserialize<QYS_RtnMessege>(responseHtml);
+                HBYHCWCommon.CommonMgr.WriteLogFile("所写内容：" + responseHtml);
+                return responseHtml;
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                cResult = new QYS_RtnMessege();
-                cResult.code = "-1";
-                cResult.message = "发生错误：" + ex.Message;
+                Console.WriteLine("发生错误 ： " + e.Message);
+                throw e;
             }
-            return cResult;
+
+            return null;
         }
+
 
         public struct ServerAddr
         {
-            /// <summary>
-            /// 测试地址
-            /// </summary>
+            public const string Dash = "--";
+            public const string Newline = "\r\n";
             public const string TEST_SERVER_IP = @"10.138.6.65";
-            /// <summary>
-            /// 正式地址
-            /// </summary>
-            //public const string OUTTER_SERVER_IP = @"61.136.145.239";
-
             public const string QYS_ACCESSTOKEN = "8Dqny0wg82";
             public const string QYS_SECRETKEY = "fm3gNdPjD1kjPbBDVTjlRBNGWMM54o";
+            public static string Boundary = GenerateBoundary();
         }
 
         public struct RestAddr
@@ -93,14 +117,31 @@ namespace Genersoft.GS.HBYHQYSCommon
             /// <summary>
             /// 契约锁文档创建接口地址-测试地址
             /// </summary>
-            public const string CREATEBYFILE_ADDR_TEST = @"http://" + ServerAddr.TEST_SERVER_IP + ":9182/v2/document/createbyfile";
-            /// <summary>
-            /// 物料同步接口地址
-            /// </summary>
-            public const string MATERIAL_RESTFUL_ADDR = @"http://" + ServerAddr.TEST_SERVER_IP + ":8094/yhApi/erp/material/saveOneMaterial";
-            
+            public const string CREATEBYFILE_ADDR_TEST =
+                @"http://" + ServerAddr.TEST_SERVER_IP + ":9182/v2/document/createbyfile";
 
+            public const string CREATEBYCATEGORY_ADDR_TEST =
+                @"http://" + ServerAddr.TEST_SERVER_IP + ":9182/contract/createbycategory";
         }
+
+        public static string Gettimestamp()
+        {
+            long timeStamp = DateTimeOffset.Now.ToUnixTimeSeconds(); // 相差秒数
+            return timeStamp.ToString();
+        }
+
+        /**
+         * MD5加密结果32位小写，yindp2022-11-25更新原先王老师MD5算法，已测试验证与契约锁MD5加密结果一致
+         */
+        public static string GetMD5(string ConvertString)
+        {
+            //创建MD5对象
+            MD5CryptoServiceProvider md5 = new MD5CryptoServiceProvider();
+            string t2 = BitConverter.ToString(md5.ComputeHash(UTF8Encoding.Default.GetBytes(ConvertString)));
+            t2 = t2.Replace("-", "");
+            return t2.ToLower();
+        }
+
         /**
          * 获取签名值
          */
@@ -110,28 +151,122 @@ namespace Genersoft.GS.HBYHQYSCommon
             string key = GetMD5(ServerAddr.QYS_ACCESSTOKEN + ServerAddr.QYS_SECRETKEY + timeStamp);
             return key;
         }
-        
-        public static string Gettimestamp()
+
+        public static string GenerateBoundary()
         {
-            long timeStamp = DateTimeOffset.Now.ToUnixTimeSeconds(); // 相差秒数
-            return timeStamp.ToString();
+            return "----" + Guid.NewGuid().ToString("N");
         }
 
-        /**
-         * MD5加密
-         */
-        public static string GetMD5(string str)
+        public static string UrlEncodeUTF8(string source)
         {
-            //创建MD5对象
-            MD5 md5 = MD5.Create();
-            //将str转换为数组
-            Byte[] buffer = Encoding.Default.GetBytes(str);
-            //将数组转为加密数组
-            Byte[] MD5buffer = md5.ComputeHash(buffer);
-            //加密数组转为字符串
-            string MD5Str = Encoding.Default.GetString(MD5buffer);
-            return MD5Str;
+            return HttpUtility.UrlEncode(source, System.Text.Encoding.UTF8);
+        }
+
+        public static void WriteMultipart(ref Stream stream, string name, FileInfo fileInfo)
+        {
+            string filename = fileInfo.Name;
+            String encodedFilename = UrlEncodeUTF8(filename);
+
+            StringBuilder header = new StringBuilder().Append(ServerAddr.Dash).Append(ServerAddr.Boundary)
+                .Append(ServerAddr.Newline)
+                .Append("Content-Disposition: form-data; name=").Append(name).Append("; filename=")
+                .Append(encodedFilename).Append(ServerAddr.Newline)
+                .Append("Content-Type:").Append("application/octet-stream").Append(ServerAddr.Newline)
+                .Append(ServerAddr.Newline);
+            Byte[] data = Encoding.UTF8.GetBytes(header.ToString());
+            stream.Write(data, 0, data.Length);
+
+            byte[] buffer = new byte[51200];
+
+            FileStream fileStream = null;
+
+            try
+            {
+                fileStream = fileInfo.OpenRead();
+
+                int count;
+                while ((count = fileStream.Read(buffer, 0, Convert.ToInt32(buffer.Length))) != -1)
+                {
+                    stream.Write(buffer, 0, count);
+                }
+
+                data = Encoding.UTF8.GetBytes(ServerAddr.Newline);
+                stream.Write(data, 0, data.Length);
+            }
+            catch (Exception e)
+            {
+                // 异常处理
+            }
+            finally
+            {
+                if (fileStream != null)
+                {
+                    fileStream.Close();
+                }
+            }
+        }
+
+        public static void WriteMultipart(ref Stream stream, string name, string filename, string contentType,
+            FileInfo fileInfo)
+        {
+            filename = string.IsNullOrWhiteSpace(filename) ? fileInfo.Name : filename;
+            String encodedFilename = UrlEncodeUTF8(filename);
+
+            StringBuilder header = new StringBuilder().Append(ServerAddr.Dash).Append(ServerAddr.Boundary)
+                .Append(ServerAddr.Newline)
+                .Append("Content-Disposition: form-data; name=").Append(name).Append("; filename=")
+                .Append(encodedFilename).Append(ServerAddr.Newline)
+                .Append("Content-Type:")
+                .Append(string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType)
+                .Append(ServerAddr.Newline)
+                .Append(ServerAddr.Newline);
+            Byte[] data = Encoding.UTF8.GetBytes(header.ToString());
+            stream.Write(data, 0, data.Length);
+
+            byte[] buffer = new byte[51200];
+
+            FileStream fileStream = null;
+
+            try
+            {
+                fileStream = fileInfo.OpenRead();
+
+                int count;
+                while ((count = fileStream.Read(buffer, 0, buffer.Length)) > 0)
+                {
+                    stream.Write(buffer, 0, count);
+                }
+
+
+                data = Encoding.UTF8.GetBytes(ServerAddr.Newline);
+                stream.Write(data, 0, data.Length);
+            }
+            catch (Exception e)
+            {
+                // 异常处理
+                HBYHCWCommon.CommonMgr.WriteLogFile(e.ToString() + e.Data.ToString() + e.HResult.ToString() +
+                                                    e.Message + e.Source);
+            }
+            finally
+            {
+                if (fileStream != null)
+                {
+                    fileStream.Close();
+                }
+            }
+        }
+
+        public static void WriteMultipart(ref Stream stream, string name, string value)
+        {
+            StringBuilder content = new StringBuilder().Append(ServerAddr.Dash).Append(ServerAddr.Boundary)
+                .Append(ServerAddr.Newline)
+                .Append("Content-Disposition: form-data; name=").Append(name).Append(ServerAddr.Newline)
+                .Append("Content-Type: text/plain; charset=utf-8").Append(ServerAddr.Newline)
+                .Append(ServerAddr.Newline)
+                .Append(value).Append(ServerAddr.Newline);
+
+            Byte[] data = Encoding.UTF8.GetBytes(content.ToString());
+            stream.Write(data, 0, data.Length);
         }
     }
-
 }
