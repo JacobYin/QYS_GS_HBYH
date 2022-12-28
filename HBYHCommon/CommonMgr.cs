@@ -385,7 +385,7 @@ namespace Genersoft.GS.HBYHCWCommon
         /// <param name="txt"></param>
         public static void WriteLogFile(string txt)
         {
-            string vsPath = @"C:\HBYH\";
+            string vsPath = @"C:\HBYH\QYS\";
             if (!Directory.Exists(vsPath))
                 Directory.CreateDirectory(vsPath);
             try

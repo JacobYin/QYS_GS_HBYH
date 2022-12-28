@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Genersoft.GS.HBYHQYSCommon
 {
-    public class QYS_RtnMessege
+    public class GS_RtnMessege
     {
         /// <summary>
         /// 状态[200:成功，500失败]

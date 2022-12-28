@@ -5,18 +5,17 @@ using System.IO;
 using System.Text;
 using System.Web.Script.Serialization;
 using System.Security.Cryptography;
+using Newtonsoft.Json.Linq;
 
 namespace Genersoft.GS.HBYHQYSCommon
 {
     public class Restful
     {
-        static JavaScriptSerializer jss = new JavaScriptSerializer();
-
-        public static QYS_RtnMessege Post(string PostURL, string PostData)
+        public static string Post(string PostURL, string PostData)
         {
-            QYS_RtnMessege cResult;
             HttpWebRequest request = null;
             Stream reqStream = null;
+
             try
             {
                 request = (HttpWebRequest) HttpWebRequest.Create(PostURL);
@@ -39,23 +38,23 @@ namespace Genersoft.GS.HBYHQYSCommon
                 Stream responseStream = response.GetResponseStream();
                 StreamReader streamReader = new StreamReader(responseStream, Encoding.UTF8);
                 string responseHtml = streamReader.ReadToEnd();
-                cResult = jss.Deserialize<QYS_RtnMessege>(responseHtml);
                 HBYHCWCommon.CommonMgr.WriteLogFile("所写内容：" + responseHtml);
+                return responseHtml;
+                response.Close();
             }
             catch (Exception ex)
             {
-                cResult = new QYS_RtnMessege();
-                cResult.message = "发生错误：" + ex.Message;
+                HBYHCWCommon.CommonMgr.WriteLogFile("发生错误：错误原因" + ex.Message);
+                throw ex;
             }
 
-            return cResult;
+            return null;
         }
 
 
         public static string Post_document(string PostURL, string filename, string filetype,
             string djnm)
         {
-            QYS_RtnMessege cResult;
             HttpWebRequest request = null;
             Stream stream = null;
             try
@@ -72,11 +71,10 @@ namespace Genersoft.GS.HBYHQYSCommon
                 request.SendChunked = true;
                 stream = request.GetRequestStream();
 
-                WriteMultipart(ref stream, "title", filename);
-                WriteMultipart(ref stream, "fileType", filetype);
                 var path = $@"\\Ser158\ht_fj\{djnm}\{filename}.{filetype}";
-
                 WriteMultipart(ref stream, "file", filename, $"application/{filetype}", new FileInfo(path));
+                WriteMultipart(ref stream, "fileType", filetype);
+                WriteMultipart(ref stream, "title", filename);
 
                 Byte[] data = Encoding.UTF8.GetBytes(new StringBuilder().Append(ServerAddr.Dash)
                     .Append(ServerAddr.Boundary).Append(ServerAddr.Dash)
@@ -88,13 +86,13 @@ namespace Genersoft.GS.HBYHQYSCommon
                 Stream responseStream = response.GetResponseStream();
                 StreamReader streamReader = new StreamReader(responseStream, Encoding.UTF8);
                 string responseHtml = streamReader.ReadToEnd();
-                cResult = jss.Deserialize<QYS_RtnMessege>(responseHtml);
                 HBYHCWCommon.CommonMgr.WriteLogFile("所写内容：" + responseHtml);
                 return responseHtml;
+                response.Close();
             }
             catch (Exception e)
             {
-                Console.WriteLine("发生错误 ： " + e.Message);
+                HBYHCWCommon.CommonMgr.WriteLogFile("发生错误：错误原因" + e.Message);
                 throw e;
             }
 
@@ -117,11 +115,29 @@ namespace Genersoft.GS.HBYHQYSCommon
             /// <summary>
             /// 契约锁文档创建接口地址-测试地址
             /// </summary>
-            public const string CREATEBYFILE_ADDR_TEST =
+            public const string ADD_CONTRACTFILE_ADDR_TEST =
                 @"http://" + ServerAddr.TEST_SERVER_IP + ":9182/v2/document/createbyfile";
 
-            public const string CREATEBYCATEGORY_ADDR_TEST =
+            public const string CREATE_BYCATEGORY_ADDR_TEST =
                 @"http://" + ServerAddr.TEST_SERVER_IP + ":9182/contract/createbycategory";
+
+            public const string ADD_SIGNATORY_DYNAMIC_TEST =
+                @"http://" + ServerAddr.TEST_SERVER_IP + ":9182/contract/addsignatories";
+
+            public const string CONTRACT_DOWNLOAD_ADDR_TEST =
+                @"http://" + ServerAddr.TEST_SERVER_IP + ":9182/contract/download";
+
+            public const string CONTRACT_SEND_ADDR_TEST =
+                @"http://" + ServerAddr.TEST_SERVER_IP + ":9182/contract/send";
+
+            public const string CONTRACT_RESEND_ADDR_TEST =
+                @"http://" + ServerAddr.TEST_SERVER_IP + ":9182/contract/resend";
+
+            public const string CONTRACT_RECALL_ADDR_TEST =
+                @"http://" + ServerAddr.TEST_SERVER_IP + ":9182/contract/recall";
+
+            public const string CONTRACT_DELETE_ADDR_TEST =
+                @"http://" + ServerAddr.TEST_SERVER_IP + ":9182/contract/delete";
         }
 
         public static string Gettimestamp()

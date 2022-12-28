@@ -31,6 +31,10 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Downloader, Version=3.0.1.0, Culture=neutral, PublicKeyToken=844973e732f6cdf4">
+      <HintPath>..\packages\Downloader.3.0.1\lib\net452\Downloader.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Genersoft.Platform.AppFramework.Service">
       <HintPath>..\..\DLL\GSP\Genersoft.Platform.AppFramework.Service.dll</HintPath>
     </Reference>
@@ -40,9 +44,8 @@
     <Reference Include="genersoft.platform.bizcomponent.basiclib">
       <HintPath>..\..\DLL\GSP\genersoft.platform.bizcomponent.basiclib.dll</HintPath>
     </Reference>
-    <Reference Include="Newtonsoft.Json, Version=6.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\DLL\Newtonsoft.Json.dll</HintPath>
+    <Reference Include="Newtonsoft.Json, Version=6.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed">
+      <HintPath>..\..\DLL\DPFP\newtonsoft.json.dll</HintPath>
     </Reference>
     <Reference Include="NPOI.v2.0">
       <HintPath>..\..\DLL\NPOI\NPOI.v2.0.dll</HintPath>
@@ -67,9 +70,22 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CommonMgr.cs" />
-    <Compile Include="Common\QYS_RtnMessege.cs" />
+    <Compile Include="Common\Bean\requestBean\Action.cs" />
+    <Compile Include="Common\Bean\requestBean\ActionOperator.cs" />
+    <Compile Include="Common\Bean\requestBean\ContractActionRequest.cs" />
+    <Compile Include="Common\Bean\requestBean\ContractRequest.cs" />
+    <Compile Include="Common\Bean\requestBean\ContractTransmitItem.cs" />
+    <Compile Include="Common\Bean\requestBean\Signatory.cs" />
+    <Compile Include="Common\Bean\responseBean\ContractAddResult.cs" />
+    <Compile Include="Common\Bean\responseBean\DocumentAddResult.cs" />
+    <Compile Include="Common\Bean\responseBean\SdkResponse.cs" />
+    <Compile Include="Common\GS_RtnMessege.cs" />
     <Compile Include="Common\Restful.cs" />
+    <Compile Include="Common\utils\JSONUtils.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
