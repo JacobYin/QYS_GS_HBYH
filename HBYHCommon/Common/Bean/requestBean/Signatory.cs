@@ -6,9 +6,11 @@ namespace Genersoft.GS.HBYHQYSCommon.Bean.requestBean
     {
         public string tenantType;
         public string tenantName;
+        public string serialNo;
+        public bool remind;
         public string receiverName;
         public string contact;
-        public string receiverNumber;
         public string language;
+        public List<Action> actions;
     }
 }

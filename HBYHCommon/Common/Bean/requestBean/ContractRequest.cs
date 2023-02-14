@@ -13,11 +13,13 @@ namespace Genersoft.GS.HBYHQYSCommon.Bean.requestBean
         public bool send;
         public List<string> documents;
         public string creatorName;
-        public string creatorContact;
+        public string tenantName;
+        public string businessData;
         public List<Signatory> signatories;
+        public bool autoCreateCounterSign;
         public bool extraSign;
         public bool mustSign;
-        public bool autoCreateCounterSign;
+        public int signAll;
         public int msgCode;
     }
 }

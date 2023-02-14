@@ -18,7 +18,7 @@ namespace Genersoft.GS.HBYHQYSCommon
 
             try
             {
-                request = (HttpWebRequest) HttpWebRequest.Create(PostURL);
+                request = (HttpWebRequest)HttpWebRequest.Create(PostURL);
                 request.Method = "POST";
                 request.Accept = "text/plain,application/json";
                 request.UserAgent = "privateapp-csharp-api-client";
@@ -34,7 +34,7 @@ namespace Genersoft.GS.HBYHQYSCommon
                 //写入流
                 reqStream.Write(postData, 0, postData.Length);
                 //获取响应，即发送请求
-                HttpWebResponse response = (HttpWebResponse) request.GetResponse();
+                HttpWebResponse response = (HttpWebResponse)request.GetResponse();
                 Stream responseStream = response.GetResponseStream();
                 StreamReader streamReader = new StreamReader(responseStream, Encoding.UTF8);
                 string responseHtml = streamReader.ReadToEnd();
@@ -59,7 +59,7 @@ namespace Genersoft.GS.HBYHQYSCommon
             Stream stream = null;
             try
             {
-                request = (HttpWebRequest) WebRequest.Create(PostURL);
+                request = (HttpWebRequest)WebRequest.Create(PostURL);
                 request.Method = "POST";
                 request.Accept = "text/plain,application/json";
                 request.UserAgent = "privateapp-csharp-api-client";
@@ -71,8 +71,9 @@ namespace Genersoft.GS.HBYHQYSCommon
                 request.SendChunked = true;
                 stream = request.GetRequestStream();
 
-                var path = $@"\\Ser158\ht_fj\{djnm}\{filename}.{filetype}";
-                WriteMultipart(ref stream, "file", filename, $"application/{filetype}", new FileInfo(path));
+                var path = $@"ftp://10.138.6.158:21/HTFiles/{djnm}/{filename}.{filetype}";
+                //WriteMultipart(ref stream, "file", filename, $"application/{filetype}", new FileInfo(path));
+                WriteMultipart(ref stream, "file", filename, $"application/{filetype}", path);
                 WriteMultipart(ref stream, "fileType", filetype);
                 WriteMultipart(ref stream, "title", filename);
 
@@ -82,7 +83,7 @@ namespace Genersoft.GS.HBYHQYSCommon
                 stream.Write(data, 0, data.Length);
                 stream.Flush();
 
-                HttpWebResponse response = (HttpWebResponse) request.GetResponse();
+                HttpWebResponse response = (HttpWebResponse)request.GetResponse();
                 Stream responseStream = response.GetResponseStream();
                 StreamReader streamReader = new StreamReader(responseStream, Encoding.UTF8);
                 string responseHtml = streamReader.ReadToEnd();
@@ -99,6 +100,101 @@ namespace Genersoft.GS.HBYHQYSCommon
             return null;
         }
 
+        public static string Get_document(string contractId, string htnm)
+        {
+            HttpWebRequest request = null;
+            Stream stream = null;
+
+            try
+            {
+                StringBuilder urlBuilder = new StringBuilder(RestAddr.CONTRACT_DOWNLOAD_ADDR_TEST);
+                urlBuilder.Append("?");
+                urlBuilder.Append("contractId").Append("=").Append(UrlEncodeUTF8(contractId));
+                urlBuilder.Append("&");
+                urlBuilder.Append("downloadItems").Append("=").Append(UrlEncodeUTF8("NORMAL,BRIEF,EVIDENCE"));
+                urlBuilder.Append("&");
+                urlBuilder.Append("needCompressForOneFile").Append("=").Append(UrlEncodeUTF8("true"));
+
+                request = (HttpWebRequest)WebRequest.Create(urlBuilder.ToString());
+                request.Method = "GET";
+                request.Accept = "text/plain,application/json";
+                request.UserAgent = "privateapp-csharp-api-client";
+                request.Headers.Add("x-qys-accesstoken", ServerAddr.QYS_ACCESSTOKEN);
+                request.Headers.Add("x-qys-timestamp", Gettimestamp());
+                request.Headers.Add("x-qys-signature", GetSignature());
+
+                HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+                if ((int)response.StatusCode == 200)
+                {
+                    Stream inputStream = null;
+                    try
+                    {
+                        string head = response.GetResponseHeader("Content-Disposition");
+                        int headst = head.IndexOf("fileName=");
+                        string filenames = head.Substring(headst + 9, head.Length - 20);
+                        string decode_filename = HttpUtility.UrlDecode(filenames, Encoding.UTF8);
+
+                        FtpWebRequest ftprequest =
+                            (FtpWebRequest)WebRequest.Create(
+                                $@"ftp://10.138.6.158:21/HTFiles/{htnm}/{decode_filename}");
+                        ftprequest.Credentials =
+                            new NetworkCredential(ServerAddr.FTPUSER, ServerAddr.FTPPASSWORD); // 需要认证的填写用户名、密码
+                        ftprequest.Method = WebRequestMethods.Ftp.UploadFile;
+                        ftprequest.KeepAlive = true;
+                        ftprequest.UseBinary = true;
+                        ftprequest.UsePassive = true;
+                        ftprequest.ContentLength = response.ContentLength;
+
+                        byte[] buff = new byte[51200];
+                        int contentLen;
+                        Stream inputftpstrm = response.GetResponseStream();
+
+                        try
+                        {
+                            Stream outputftpstrm = ftprequest.GetRequestStream();
+                            while ((contentLen = inputftpstrm.Read(buff, 0, buff.Length)) > 0)
+                            {
+                                outputftpstrm.Write(buff, 0, contentLen);
+                            }
+
+                            outputftpstrm.Close();
+                            inputftpstrm.Close();
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine(e);
+                            throw;
+                        }
+
+                        return decode_filename;
+                    }
+                    catch (Exception e)
+                    {
+                        // 处理异常情况
+                        HBYHCWCommon.CommonMgr.WriteLogFile("下载附件出错，出错原因" + e.Message);
+                    }
+                    finally
+                    {
+                        if (inputStream != null)
+                        {
+                            inputStream.Close();
+                        }
+                    }
+                }
+                else
+                {
+                    // 处理异常情况
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
+
+            return null;
+        }
+
 
         public struct ServerAddr
         {
@@ -108,6 +204,8 @@ namespace Genersoft.GS.HBYHQYSCommon
             public const string QYS_ACCESSTOKEN = "8Dqny0wg82";
             public const string QYS_SECRETKEY = "fm3gNdPjD1kjPbBDVTjlRBNGWMM54o";
             public static string Boundary = GenerateBoundary();
+            public const string FTPUSER = "yhftp";
+            public const string FTPPASSWORD = "shift@6457086";
         }
 
         public struct RestAddr
@@ -283,6 +381,68 @@ namespace Genersoft.GS.HBYHQYSCommon
 
             Byte[] data = Encoding.UTF8.GetBytes(content.ToString());
             stream.Write(data, 0, data.Length);
+        }
+
+        public static void WriteMultipart(ref Stream stream, string name, string filename, string contentType,
+            String ftpUrl)
+        {
+            String encodedFilename = UrlEncodeUTF8(filename);
+
+            StringBuilder header = new StringBuilder().Append(ServerAddr.Dash).Append(ServerAddr.Boundary)
+                .Append(ServerAddr.Newline)
+                .Append("Content-Disposition: form-data; name=").Append(name).Append("; filename=")
+                .Append(encodedFilename).Append(ServerAddr.Newline)
+                .Append("Content-Type:")
+                .Append(string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType)
+                .Append(ServerAddr.Newline)
+                .Append(ServerAddr.Newline);
+            Byte[] data = Encoding.UTF8.GetBytes(header.ToString());
+            stream.Write(data, 0, data.Length);
+
+            byte[] buffer = new byte[51200];
+
+            FtpWebResponse ftpResponse = null;
+            Stream ftpStream = null;
+
+            try
+            {
+                FtpWebRequest request = (FtpWebRequest)WebRequest.Create(ftpUrl);
+                request.Credentials =
+                    new NetworkCredential(ServerAddr.FTPUSER, ServerAddr.FTPPASSWORD); // 需要认证的填写用户名、密码
+                request.Method = WebRequestMethods.Ftp.DownloadFile;
+                request.KeepAlive = true;
+                request.UseBinary = true;
+                request.UsePassive = true;
+                request.Timeout = 3000;
+
+                ftpResponse = (FtpWebResponse)request.GetResponse();
+                ftpStream = ftpResponse.GetResponseStream();
+
+                int count;
+                while ((count = ftpStream.Read(buffer, 0, buffer.Length)) > 0)
+                {
+                    stream.Write(buffer, 0, count);
+                }
+
+                data = Encoding.UTF8.GetBytes(ServerAddr.Newline);
+                stream.Write(data, 0, data.Length);
+            }
+            catch (Exception e)
+            {
+                HBYHCWCommon.CommonMgr.WriteLogFile("读取附件错误，错误原因：" + e.Message);
+            }
+            finally
+            {
+                if (ftpStream != null)
+                {
+                    ftpStream.Close();
+                }
+
+                if (ftpResponse != null)
+                {
+                    ftpResponse.Close();
+                }
+            }
         }
     }
 }

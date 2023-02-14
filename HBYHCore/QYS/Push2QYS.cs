@@ -6,13 +6,15 @@ namespace Genersoft.GS.HBYHQYSCore.QYS
 {
     public class Push2QYS
     {
-        public void CreateContractAndDocument(string billcode, string auditstate)
+        public void CreateContractAndDocument(string billcode, string categoryID, string GaiZhangName,
+            string GaiZhangContact, string auditstate)
         {
             try
             {
                 if (auditstate == "1")
                 {
-                    string result = ConAndDocuImpl.SetContract(billcode);
+                    string result =
+                        ConAndDocuImpl.SetDoubleContract(billcode, categoryID, GaiZhangName, GaiZhangContact);
                     if (result == "SUCCESS")
                     {
                         HBYHCWCommon.CommonMgr.WriteLogFile("推送成功");
@@ -25,9 +27,14 @@ namespace Genersoft.GS.HBYHQYSCore.QYS
             }
             catch (Exception e)
             {
-                Console.WriteLine("发生错误： "+ e);
+                Console.WriteLine("发生错误： " + e);
                 throw;
             }
+        }
+
+        public void DownLoadAllDocument()
+        {
+            ConAndDocuImpl.Get_Document();
         }
     }
 }
