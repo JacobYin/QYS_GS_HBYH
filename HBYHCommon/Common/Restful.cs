@@ -3,9 +3,7 @@ using System.Web;
 using System.Net;
 using System.IO;
 using System.Text;
-using System.Web.Script.Serialization;
 using System.Security.Cryptography;
-using Newtonsoft.Json.Linq;
 
 namespace Genersoft.GS.HBYHQYSCommon
 {
@@ -87,7 +85,7 @@ namespace Genersoft.GS.HBYHQYSCommon
                 Stream responseStream = response.GetResponseStream();
                 StreamReader streamReader = new StreamReader(responseStream, Encoding.UTF8);
                 string responseHtml = streamReader.ReadToEnd();
-                HBYHCWCommon.CommonMgr.WriteLogFile("所写内容：" + responseHtml);
+                HBYHCWCommon.CommonMgr.WriteLogFile("返回结果：" + responseHtml);
                 return responseHtml;
                 response.Close();
             }
@@ -107,13 +105,15 @@ namespace Genersoft.GS.HBYHQYSCommon
 
             try
             {
-                StringBuilder urlBuilder = new StringBuilder(RestAddr.CONTRACT_DOWNLOAD_ADDR_TEST);
+                StringBuilder urlBuilder = new StringBuilder(NormalRestAddr.CONTRACT_DOWNLOAD_ADDR_TEST);
                 urlBuilder.Append("?");
                 urlBuilder.Append("contractId").Append("=").Append(UrlEncodeUTF8(contractId));
                 urlBuilder.Append("&");
-                urlBuilder.Append("downloadItems").Append("=").Append(UrlEncodeUTF8("NORMAL,BRIEF,EVIDENCE"));
+                urlBuilder.Append("downloadItems").Append("=").Append(UrlEncodeUTF8("NORMAL"));
                 urlBuilder.Append("&");
                 urlBuilder.Append("needCompressForOneFile").Append("=").Append(UrlEncodeUTF8("true"));
+
+                HBYHCWCommon.CommonMgr.WriteLogFile("调用下载合同URL地址" + urlBuilder.ToString());
 
                 request = (HttpWebRequest)WebRequest.Create(urlBuilder.ToString());
                 request.Method = "GET";
@@ -124,6 +124,8 @@ namespace Genersoft.GS.HBYHQYSCommon
                 request.Headers.Add("x-qys-signature", GetSignature());
 
                 HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+
+
                 if ((int)response.StatusCode == 200)
                 {
                     Stream inputStream = null;
@@ -134,6 +136,7 @@ namespace Genersoft.GS.HBYHQYSCommon
                         string filenames = head.Substring(headst + 9, head.Length - 20);
                         string decode_filename = HttpUtility.UrlDecode(filenames, Encoding.UTF8);
 
+                        HBYHCWCommon.CommonMgr.WriteLogFile(decode_filename);
                         FtpWebRequest ftprequest =
                             (FtpWebRequest)WebRequest.Create(
                                 $@"ftp://10.138.6.158:21/HTFiles/{htnm}/{decode_filename}");
@@ -201,8 +204,9 @@ namespace Genersoft.GS.HBYHQYSCommon
             public const string Dash = "--";
             public const string Newline = "\r\n";
             public const string TEST_SERVER_IP = @"10.138.6.65";
-            public const string QYS_ACCESSTOKEN = "8Dqny0wg82";
-            public const string QYS_SECRETKEY = "fm3gNdPjD1kjPbBDVTjlRBNGWMM54o";
+            public const string NORMAL_SERVER_IP = @"10.138.6.61";
+            public const string QYS_ACCESSTOKEN = "9onu6TJeLE";
+            public const string QYS_SECRETKEY = "vCUvelNy7f7QtxBTeF4JlAKqc0xJ3R";
             public static string Boundary = GenerateBoundary();
             public const string FTPUSER = "yhftp";
             public const string FTPPASSWORD = "shift@6457086";
@@ -236,6 +240,36 @@ namespace Genersoft.GS.HBYHQYSCommon
 
             public const string CONTRACT_DELETE_ADDR_TEST =
                 @"http://" + ServerAddr.TEST_SERVER_IP + ":9182/contract/delete";
+        }
+
+        public struct NormalRestAddr
+        {
+            /// <summary>
+            /// 契约锁文档创建接口地址-测试地址
+            /// </summary>
+            public const string ADD_CONTRACTFILE_ADDR_TEST =
+                @"http://" + ServerAddr.NORMAL_SERVER_IP + ":9182/v2/document/createbyfile";
+
+            public const string CREATE_BYCATEGORY_ADDR_TEST =
+                @"http://" + ServerAddr.NORMAL_SERVER_IP + ":9182/contract/createbycategory";
+
+            public const string ADD_SIGNATORY_DYNAMIC_TEST =
+                @"http://" + ServerAddr.NORMAL_SERVER_IP + ":9182/contract/addsignatories";
+
+            public const string CONTRACT_DOWNLOAD_ADDR_TEST =
+                @"http://" + ServerAddr.NORMAL_SERVER_IP + ":9182/contract/download";
+
+            public const string CONTRACT_SEND_ADDR_TEST =
+                @"http://" + ServerAddr.NORMAL_SERVER_IP + ":9182/contract/send";
+
+            public const string CONTRACT_RESEND_ADDR_TEST =
+                @"http://" + ServerAddr.NORMAL_SERVER_IP + ":9182/contract/resend";
+
+            public const string CONTRACT_RECALL_ADDR_TEST =
+                @"http://" + ServerAddr.NORMAL_SERVER_IP + ":9182/contract/recall";
+
+            public const string CONTRACT_DELETE_ADDR_TEST =
+                @"http://" + ServerAddr.NORMAL_SERVER_IP + ":9182/contract/delete";
         }
 
         public static string Gettimestamp()

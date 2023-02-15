@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Data;
 using Genersoft.GS.HBYHQYSCommon.Bean.requestBean;
-using Genersoft.GS.HBYHQYSCommon.Bean.responseBean;
 using Genersoft.GS.HBYHQYSCommon.utils;
 using Genersoft.Platform.AppFramework.Service;
 using Genersoft.Platform.Core.DataAccess;
@@ -33,8 +32,9 @@ namespace Genersoft.GS.HBYHQYSCore.QYS.impl
                 for (int i = 0; i < ds.Tables[0].Rows.Count; i++)
                 {
                     DataRow row = ds.Tables[0].Rows[i];
+                    string htmc = row["HTMC"].ToString();
                     string postresult = HBYHQYSCommon.Restful.Post_document(
-                        HBYHQYSCommon.Restful.RestAddr.ADD_CONTRACTFILE_ADDR_TEST,
+                        HBYHQYSCommon.Restful.NormalRestAddr.ADD_CONTRACTFILE_ADDR_TEST,
                         row["FILENAME"].ToString(), row["FILETYPE"].ToString(), row["DJNM"].ToString());
                     JObject oresult = (JObject)JsonConvert.DeserializeObject(postresult);
                     if ((int)oresult["code"] == 0)
@@ -47,9 +47,9 @@ namespace Genersoft.GS.HBYHQYSCore.QYS.impl
                         DateTime now = DateTime.Now;
                         string date = now.Year.ToString() + now.Month.ToString("00") + now.Day.ToString("00");
                         string time = now.ToLongTimeString();
-                        //将数据插入到中间包当中去
+                        //将数据插入到中间表当中去
                         string sql =
-                            $@"insert into uf_es_record@OADB (ID, YYLCID, YYLCMC, LCDJZJID, GZQFJID, MODEDATACREATERTYPE, MODEDATACREATEDATE, MODEDATACREATETIME)values ({id}, 3036553591784023031, '股份公司合同测试签章流程', '{HTNM}', {documentid}, 3, '{date}', '{time}')";
+                            $@"insert into uf_es_record@OADB (ID, YYLCMC, LCDJZJID, GZQFJID, GZHFJID, MODEDATACREATERTYPE, MODEDATACREATEDATE, MODEDATACREATETIME)values ({id},'{htmc}', '{HTNM}', {documentid},0, 3, '{date}', '{time}')";
                         int sqlStatement = db.ExecSqlStatement(sql);
                         if (sqlStatement > 0)
                         {
@@ -101,7 +101,7 @@ namespace Genersoft.GS.HBYHQYSCore.QYS.impl
                 //定义各签署方的信息
                 Signatory fqsignatory = new Signatory();
                 fqsignatory.tenantType = "COMPANY";
-                fqsignatory.tenantName = "湖北宜化集团有限责任公司";
+                fqsignatory.tenantName = row["TENANTNAME"].ToString();
                 fqsignatory.serialNo = "1";
                 fqsignatory.remind = true;
                 fqsignatory.contact = row["WFYWDH"].ToString();
@@ -169,7 +169,6 @@ namespace Genersoft.GS.HBYHQYSCore.QYS.impl
                 DuiFangGaiZhang.name = "对方组织盖章";
                 DuiFangGaiZhang.serialNo = 2;
                 ActionOperator dfgaizhangrenyuan = new ActionOperator();
-                dfgaizhangrenyuan.operatorContact = "13000000000";
                 DuiFangGaiZhang.actionOperators = new List<ActionOperator>() { dfgaizhangrenyuan };
 
                 khfActions.Add(DuiFangQianzi);
@@ -184,7 +183,7 @@ namespace Genersoft.GS.HBYHQYSCore.QYS.impl
             string serializecontract = JsonConvert.SerializeObject(contract);
             HBYHCWCommon.CommonMgr.WriteLogFile("创建JSON内容：" + serializecontract);
             string Contract_result =
-                HBYHQYSCommon.Restful.Post(HBYHQYSCommon.Restful.RestAddr.CREATE_BYCATEGORY_ADDR_TEST,
+                HBYHQYSCommon.Restful.Post(HBYHQYSCommon.Restful.NormalRestAddr.CREATE_BYCATEGORY_ADDR_TEST,
                     serializecontract);
             JObject contract_object = (JObject)JsonConvert.DeserializeObject(Contract_result);
             HBYHCWCommon.CommonMgr.WriteLogFile("已执行创建合同接口");
@@ -193,7 +192,7 @@ namespace Genersoft.GS.HBYHQYSCore.QYS.impl
                 string contract_id = contract_object["contractId"].ToString();
                 long contract_sz = Convert.ToInt64(contract_id);
                 string sql_2 =
-                    $"UPDATE uf_es_record@OADB s SET s.QYSHTID = {contract_sz},s.QYSHTZTZ = 'draft' WHERE s.LCDJZJID = '{HTNM}'";
+                    $"UPDATE uf_es_record@OADB s SET s.QYSHTID = {contract_sz},s.QYSHTZTZ = 'draft',s.YYLCID = {categoryID} WHERE s.LCDJZJID = '{HTNM}'";
                 int sqlStatement_result = db.ExecSqlStatement(sql_2);
                 if (sqlStatement_result > 0)
                 {
@@ -227,7 +226,7 @@ namespace Genersoft.GS.HBYHQYSCore.QYS.impl
                     string document_name =
                         HBYHQYSCommon.Restful.Get_document(row["DZHTID"].ToString(), row["LCDJZJID"].ToString());
                     HBYHCWCommon.CommonMgr.WriteLogFile(document_name);
-                    
+
                     HBYHCWCommon.CommonMgr.WriteLogFile("获取文件结果：" + document_name);
                     IDbDataParameter[] nparams = new IDbDataParameter[2];
                     nparams[0] = db.MakeInParam("DOCUMENTNAME", GSPDbDataType.VarChar, 36, document_name);
