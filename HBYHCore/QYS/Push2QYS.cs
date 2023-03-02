@@ -36,5 +36,10 @@ namespace Genersoft.GS.HBYHQYSCore.QYS
         {
             ConAndDocuImpl.Get_Document();
         }
+
+        public void Synchronize_Comp_Auth()
+        {
+            ConAndDocuImpl.Sync_CompAuth();
+        }
     }
 }

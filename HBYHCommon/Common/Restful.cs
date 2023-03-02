@@ -9,6 +9,13 @@ namespace Genersoft.GS.HBYHQYSCommon
 {
     public class Restful
     {
+        /// <summary>
+        /// 网页端POST请求方法
+        /// </summary>
+        /// <param name="PostURL">请求的URL地址</param>
+        /// <param name="PostData">发送请求的postdata</param>
+        /// <returns>返回QYS返回的json数据</returns>
+        /// <exception cref="Exception"></exception>
         public static string Post(string PostURL, string PostData)
         {
             HttpWebRequest request = null;
@@ -38,18 +45,24 @@ namespace Genersoft.GS.HBYHQYSCommon
                 string responseHtml = streamReader.ReadToEnd();
                 HBYHCWCommon.CommonMgr.WriteLogFile("所写内容：" + responseHtml);
                 return responseHtml;
-                response.Close();
             }
             catch (Exception ex)
             {
                 HBYHCWCommon.CommonMgr.WriteLogFile("发生错误：错误原因" + ex.Message);
                 throw ex;
             }
-
-            return null;
         }
 
 
+        /// <summary>
+        /// 创建文件的POST请求方法，用来调用创建合同附件的接口
+        /// </summary>
+        /// <param name="PostURL">发送请求的POST地址</param>
+        /// <param name="filename">需要上传的文件名</param>
+        /// <param name="filetype">需要上传的文件拓展名</param>
+        /// <param name="djnm">浪潮单据内码</param>
+        /// <returns>返回契约锁的结果JSON字符串</returns>
+        /// <exception cref="Exception"></exception>
         public static string Post_document(string PostURL, string filename, string filetype,
             string djnm)
         {
@@ -69,6 +82,7 @@ namespace Genersoft.GS.HBYHQYSCommon
                 request.SendChunked = true;
                 stream = request.GetRequestStream();
 
+                //路径为浪潮附加158ftp文件服务器的地址
                 var path = $@"ftp://10.138.6.158:21/HTFiles/{djnm}/{filename}.{filetype}";
                 //WriteMultipart(ref stream, "file", filename, $"application/{filetype}", new FileInfo(path));
                 WriteMultipart(ref stream, "file", filename, $"application/{filetype}", path);
@@ -87,22 +101,24 @@ namespace Genersoft.GS.HBYHQYSCommon
                 string responseHtml = streamReader.ReadToEnd();
                 HBYHCWCommon.CommonMgr.WriteLogFile("返回结果：" + responseHtml);
                 return responseHtml;
-                response.Close();
             }
             catch (Exception e)
             {
                 HBYHCWCommon.CommonMgr.WriteLogFile("发生错误：错误原因" + e.Message);
                 throw e;
             }
-
-            return null;
         }
 
+        /// <summary>
+        /// 获取文件下载链接的GET方法
+        /// </summary>
+        /// <param name="contractId">契约锁的contractid</param>
+        /// <param name="htnm">浪潮的合同内码字段</param>
+        /// <returns></returns>
         public static string Get_document(string contractId, string htnm)
         {
             HttpWebRequest request = null;
-            Stream stream = null;
-
+           
             try
             {
                 StringBuilder urlBuilder = new StringBuilder(NormalRestAddr.CONTRACT_DOWNLOAD_ADDR_TEST);
@@ -198,7 +214,56 @@ namespace Genersoft.GS.HBYHQYSCommon
             return null;
         }
 
+        /// <summary>
+        /// 获取外部法人单位的详细信息，返回名称，认证时间、认证情况等信息
+        /// </summary>
+        /// <returns></returns>
+        public static string Get_Organization_Auth()
+        {
+            HttpWebRequest request = null;
+            
+            try
+            {
+                StringBuilder urlBuilder = new StringBuilder(NormalRestAddr.QUERY_ALL_COMPANY_Auth);
+                urlBuilder.Append("?");
+                urlBuilder.Append("tenantType").Append("=").Append(UrlEncodeUTF8("COMPANY"));
 
+                HBYHCWCommon.CommonMgr.WriteLogFile("调用查询公司认证状态列表接口：" + urlBuilder.ToString());
+
+                request = (HttpWebRequest)WebRequest.Create(urlBuilder.ToString());
+                request.Method = "GET";
+                request.Accept = "text/plain,application/json";
+                request.UserAgent = "privateapp-csharp-api-client";
+                request.Headers.Add("x-qys-accesstoken", ServerAddr.QYS_ACCESSTOKEN);
+                request.Headers.Add("x-qys-timestamp", Gettimestamp());
+                request.Headers.Add("x-qys-signature", GetSignature());
+
+                HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+
+                if ((int)response.StatusCode == 200)
+                {
+                    Stream responseStream = response.GetResponseStream();
+                    StreamReader streamReader = new StreamReader(responseStream, Encoding.UTF8);
+                    string responseHtml = streamReader.ReadToEnd();
+                    return responseHtml;
+                }
+                else
+                {
+                    HBYHCWCommon.CommonMgr.WriteLogFile("状态码错误:" + response.StatusCode);
+                }
+            }
+            catch (Exception e)
+            {
+                HBYHCWCommon.CommonMgr.WriteLogFile(e.Message);
+                throw;
+            }
+
+            return "COMPANY_AUTH_QUERY_FAILED";
+        }
+        
+        /// <summary>
+        /// 接口配置信息
+        /// </summary>
         public struct ServerAddr
         {
             public const string Dash = "--";
@@ -212,6 +277,9 @@ namespace Genersoft.GS.HBYHQYSCommon
             public const string FTPPASSWORD = "shift@6457086";
         }
 
+        /// <summary>
+        /// 测试服各个接口调用地址
+        /// </summary>
         public struct RestAddr
         {
             /// <summary>
@@ -242,6 +310,9 @@ namespace Genersoft.GS.HBYHQYSCommon
                 @"http://" + ServerAddr.TEST_SERVER_IP + ":9182/contract/delete";
         }
 
+        /// <summary>
+        /// 正式服各个接口调用地址
+        /// </summary>
         public struct NormalRestAddr
         {
             /// <summary>
@@ -270,8 +341,15 @@ namespace Genersoft.GS.HBYHQYSCommon
 
             public const string CONTRACT_DELETE_ADDR_TEST =
                 @"http://" + ServerAddr.NORMAL_SERVER_IP + ":9182/contract/delete";
+
+            public const string QUERY_ALL_COMPANY_Auth =
+                @"http://" + ServerAddr.NORMAL_SERVER_IP + ":9182/company/list";
         }
 
+        /// <summary>
+        /// 生成时间戳，返回linux时间戳格式
+        /// </summary>
+        /// <returns></returns>
         public static string Gettimestamp()
         {
             long timeStamp = DateTimeOffset.Now.ToUnixTimeSeconds(); // 相差秒数
@@ -309,7 +387,13 @@ namespace Genersoft.GS.HBYHQYSCommon
         {
             return HttpUtility.UrlEncode(source, System.Text.Encoding.UTF8);
         }
-
+        
+        /// <summary>
+        /// 读取文件流方法
+        /// </summary>
+        /// <param name="stream"></param>
+        /// <param name="name"></param>
+        /// <param name="fileInfo"></param>
         public static void WriteMultipart(ref Stream stream, string name, FileInfo fileInfo)
         {
             string filename = fileInfo.Name;
@@ -344,6 +428,7 @@ namespace Genersoft.GS.HBYHQYSCommon
             catch (Exception e)
             {
                 // 异常处理
+                HBYHCWCommon.CommonMgr.WriteLogFile("错误原因： " + e.Message);
             }
             finally
             {

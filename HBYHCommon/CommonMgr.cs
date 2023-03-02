@@ -28,26 +28,30 @@ namespace Genersoft.GS.HBYHCWCommon
         #region 格式转换
 
         #region Xml2Json
+
         public static string Xml2Json(string sxml)
         {
             DataSet ds = Xml2DataSet(sxml);
             string v = DataSet2Json(ds);
             return v;
         }
+
         #endregion Xml2Json
 
         #region DataSet2Json
+
         public static string DataSet2Json(DataSet ds)
         {
             var json = JsonConvert.SerializeObject(ds);
             return json;
         }
+
         #endregion DataSet2Json
 
         #region DataSet2XML
+
         public static string DataSet2XML(DataSet ds)
         {
-
             MemoryStream stream = null;
             XmlTextWriter writer = null;
             string r = "";
@@ -70,7 +74,8 @@ namespace Genersoft.GS.HBYHCWCommon
                 if (r.IndexOf("<NewDataSet>") >= 0)
                     r = r.Substring(r.IndexOf("<NewDataSet>"), r.Length - r.IndexOf("<NewDataSet>"));
 
-                r = r.Replace("<NewDataSet>", "<?xml version=\"1.0\" encoding=\"UTF-8\" ?><Data>").Replace("</NewDataSet>", "</Data>");
+                r = r.Replace("<NewDataSet>", "<?xml version=\"1.0\" encoding=\"UTF-8\" ?><Data>")
+                    .Replace("</NewDataSet>", "</Data>");
                 r = r.Replace("<NewDataSet />", "<?xml version=\"1.0\" encoding=\"UTF-8\" ?><Data/>");
                 return r;
             }
@@ -83,14 +88,15 @@ namespace Genersoft.GS.HBYHCWCommon
                 if (writer != null) writer.Close();
             }
         }
+
         #endregion DataSet2XML
 
         #region Xml2DataSet
 
         public static DataSet Xml2DataSet(string sxml)
         {
-
             #region 处理xml，获得dataset
+
             StringReader stream = null;
             XmlTextReader reader = null;
             DataSet xmlds = new DataSet();
@@ -113,6 +119,7 @@ namespace Genersoft.GS.HBYHCWCommon
                     reader.Close();
                 }
             }
+
             #endregion
 
             return xmlds;
@@ -137,19 +144,23 @@ namespace Genersoft.GS.HBYHCWCommon
                         throw new Exception("该Json格式无法反序列化为数据集");
                     }
                 }
+
                 ds = JsonConvert.DeserializeObject<DataSet>(sjson);
             }
             catch (Exception ex)
             {
                 throw ex;
             }
+
             return ds;
         }
 
         #endregion Json2DataSet
+
         #endregion 格式转换
 
         #region ReturnStr
+
         /// <summary>
         /// 返回字符串
         /// </summary>
@@ -164,20 +175,26 @@ namespace Genersoft.GS.HBYHCWCommon
             {
                 case "XML":
                     r = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
-                                "<ResultInfo>" +
-                                "<SourceBillCode></SourceBillCode>" +
-                                "<BillID></BillID>" +
-                                "<BillCode></BillCode>" +
-                                "<State>" + state + "</State>" +
-                                "<CreateDate>" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + "</CreateDate>" +
-                                "<FailReason>" + mess + "</FailReason>" +
-                                "</ResultInfo>";
+                        "<ResultInfo>" +
+                        "<SourceBillCode></SourceBillCode>" +
+                        "<BillID></BillID>" +
+                        "<BillCode></BillCode>" +
+                        "<State>" + state + "</State>" +
+                        "<CreateDate>" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + "</CreateDate>" +
+                        "<FailReason>" + mess + "</FailReason>" +
+                        "</ResultInfo>";
                     break;
                 case "JSON":
-                    r = "{\"ResultInfo\": [{\"SourceBillCode\": \"\",\"BillID\": \"\",\"BillCode\": \"\",\"State\": \"" + state + "\",\"CreateDate\": \"" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + "\",\"FailReason\": \"" + mess + "\"}]}";
+                    r =
+                        "{\"ResultInfo\": [{\"SourceBillCode\": \"\",\"BillID\": \"\",\"BillCode\": \"\",\"State\": \"" +
+                        state + "\",\"CreateDate\": \"" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") +
+                        "\",\"FailReason\": \"" + mess + "\"}]}";
                     break;
                 default:
-                    r = "{\"ResultInfo\": [{\"SourceBillCode\": \"\",\"BillID\": \"\",\"BillCode\": \"\",\"State\": \"" + state + "\",\"CreateDate\": \"" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + "\",\"FailReason\": \"" + mess + "\"}]}";
+                    r =
+                        "{\"ResultInfo\": [{\"SourceBillCode\": \"\",\"BillID\": \"\",\"BillCode\": \"\",\"State\": \"" +
+                        state + "\",\"CreateDate\": \"" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") +
+                        "\",\"FailReason\": \"" + mess + "\"}]}";
                     break;
             }
 
@@ -194,27 +211,32 @@ namespace Genersoft.GS.HBYHCWCommon
         /// <param name="mess">错误信息</param>
         /// <param name="type">XML;JSON</param>
         /// <returns></returns>
-        public static string ReturnStrOLD(string sourcebillcode, string billid, string billcode, string state, string mess, string type)
+        public static string ReturnStrOLD(string sourcebillcode, string billid, string billcode, string state,
+            string mess, string type)
         {
             string r = mess;
             switch (type)
             {
                 case "XML":
                     r = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
-                                "<ResultInfo>" +
-                                "<SourceBillCode>" + sourcebillcode + "</SourceBillCode>" +
-                                "<BillID>" + billid + "</BillID>" +
-                                "<BillCode>" + billcode + "</BillCode>" +
-                                "<State>" + state + "</State>" +
-                                "<CreateDate>" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + "</CreateDate>" +
-                                "<FailReason>" + mess + "</FailReason>" +
-                                "</ResultInfo>";
+                        "<ResultInfo>" +
+                        "<SourceBillCode>" + sourcebillcode + "</SourceBillCode>" +
+                        "<BillID>" + billid + "</BillID>" +
+                        "<BillCode>" + billcode + "</BillCode>" +
+                        "<State>" + state + "</State>" +
+                        "<CreateDate>" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + "</CreateDate>" +
+                        "<FailReason>" + mess + "</FailReason>" +
+                        "</ResultInfo>";
                     break;
                 case "JSON":
-                    r = "{\"ResultInfo\": [{\"SourceBillCode\": \"" + sourcebillcode + "\",\"BillID\": \"" + billid + "\",\"BillCode\": \"" + billcode + "\",\"State\": \"" + state + "\",\"CreateDate\": \"" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + "\",\"FailReason\": \"" + mess + "\"}]}";
+                    r = "{\"ResultInfo\": [{\"SourceBillCode\": \"" + sourcebillcode + "\",\"BillID\": \"" + billid +
+                        "\",\"BillCode\": \"" + billcode + "\",\"State\": \"" + state + "\",\"CreateDate\": \"" +
+                        DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + "\",\"FailReason\": \"" + mess + "\"}]}";
                     break;
                 default:
-                    r = "{\"ResultInfo\": [{\"SourceBillCode\": \"" + sourcebillcode + "\",\"BillID\": \"" + billid + "\",\"BillCode\": \"" + billcode + "\",\"State\": \"" + state + "\",\"CreateDate\": \"" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + "\",\"FailReason\": \"" + mess + "\"}]}";
+                    r = "{\"ResultInfo\": [{\"SourceBillCode\": \"" + sourcebillcode + "\",\"BillID\": \"" + billid +
+                        "\",\"BillCode\": \"" + billcode + "\",\"State\": \"" + state + "\",\"CreateDate\": \"" +
+                        DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + "\",\"FailReason\": \"" + mess + "\"}]}";
                     break;
             }
 
@@ -257,7 +279,9 @@ namespace Genersoft.GS.HBYHCWCommon
 
             return ds;
         }
-        public static DataSet GetReturnDataSet(string pkid, string billid, string billcode, string state, string failreason)
+
+        public static DataSet GetReturnDataSet(string pkid, string billid, string billcode, string state,
+            string failreason)
         {
             DataSet ds = new DataSet();
             DataTable dt = new DataTable();
@@ -279,7 +303,9 @@ namespace Genersoft.GS.HBYHCWCommon
 
             return ds;
         }
-        public static string GetReturnDataString(string pkid, string billid, string billcode, string state, string failreason, string format)
+
+        public static string GetReturnDataString(string pkid, string billid, string billcode, string state,
+            string failreason, string format)
         {
             DataSet ds = GetReturnDataSet(pkid, billid, billcode, state, failreason);
             string r = "";
@@ -295,11 +321,14 @@ namespace Genersoft.GS.HBYHCWCommon
                     r = CommonMgr.DataSet2Json(ds);
                     break;
             }
+
             return GetErrorStr(r);
         }
 
         #region 返回字段增加分录ID字段
-        public static DataSet GetReturnDataSet(string pkid, string billid, string billcode, string state, string failreason, string billitemid)
+
+        public static DataSet GetReturnDataSet(string pkid, string billid, string billcode, string state,
+            string failreason, string billitemid)
         {
             DataSet ds = new DataSet();
             DataTable dt = new DataTable();
@@ -322,7 +351,9 @@ namespace Genersoft.GS.HBYHCWCommon
 
             return ds;
         }
-        public static string GetReturnDataString(string pkid, string billid, string billcode, string state, string failreason, string format, string billitemid)
+
+        public static string GetReturnDataString(string pkid, string billid, string billcode, string state,
+            string failreason, string format, string billitemid)
         {
             DataSet ds = GetReturnDataSet(pkid, billid, billcode, state, failreason, billitemid);
             string r = "";
@@ -338,14 +369,15 @@ namespace Genersoft.GS.HBYHCWCommon
                     r = CommonMgr.DataSet2Json(ds);
                     break;
             }
+
             return GetErrorStr(r);
         }
+
         #endregion
 
 
         public static string GetReturnDataString(string state, string failreason, string format)
         {
-
             DataSet ds = new DataSet();
             DataTable dt = new DataTable();
             dt.TableName = "ResultInfo";
@@ -373,12 +405,14 @@ namespace Genersoft.GS.HBYHCWCommon
                     r = CommonMgr.DataSet2Json(ds);
                     break;
             }
+
             return GetErrorStr(r);
         }
 
         #endregion 构建返回结果
 
         #region WriteLogFile
+
         /// <summary>
         /// 写入日志
         /// </summary>
@@ -398,8 +432,10 @@ namespace Genersoft.GS.HBYHCWCommon
             }
             catch (Exception ex)
             {
+                Console.WriteLine(ex.Message);
             }
         }
+
         public static void WriteLogFile(string txt, string vsPath)
         {
             if (!Directory.Exists(vsPath))
@@ -414,15 +450,19 @@ namespace Genersoft.GS.HBYHCWCommon
             }
             catch (Exception ex)
             {
+                Console.WriteLine(ex.Message);
             }
         }
+
         #endregion WriteLogFile
 
         #region 动态调用webservices
+
         public static object InvokeWebService(string url, string methodname, object[] args)
         {
             return InvokeWebService(url, null, methodname, args);
         }
+
         public static object InvokeWebService(string url, string classname, string methodname, object[] args)
         {
             string @namespace = "EnterpriseServerBase.WebService.DynamicWebCalling";
@@ -430,6 +470,7 @@ namespace Genersoft.GS.HBYHCWCommon
             {
                 classname = GetClassName(url);
             }
+
             try
             {
                 //获取WSDL
@@ -466,6 +507,7 @@ namespace Genersoft.GS.HBYHCWCommon
                         sb.Append(ce.ToString());
                         sb.Append(System.Environment.NewLine);
                     }
+
                     throw new Exception(sb.ToString());
                 }
 
@@ -489,9 +531,11 @@ namespace Genersoft.GS.HBYHCWCommon
             string[] pps = parts[parts.Length - 1].Split('.');
             return pps[0];
         }
+
         #endregion 动态调用webservices
 
         #region HTTP API接口返回
+
         public static string GetJson(string url, string parms, Encoding Encode)
         {
             HttpWebRequest objWebRequest = (HttpWebRequest)WebRequest.Create(url);
@@ -513,8 +557,8 @@ namespace Genersoft.GS.HBYHCWCommon
             catch (WebException ex)
             {
                 response = (HttpWebResponse)ex.Response;
-
             }
+
             StreamReader sr = new StreamReader(response.GetResponseStream(), Encode);
             return sr.ReadToEnd(); // 返回的数据
         }
@@ -538,6 +582,7 @@ namespace Genersoft.GS.HBYHCWCommon
         #endregion
 
         #region GenerateStringID
+
         public static string GenerateStringID()
         {
             long i = 1;
@@ -545,11 +590,14 @@ namespace Genersoft.GS.HBYHCWCommon
             {
                 i *= ((int)b + 1);
             }
+
             return string.Format("{0:x}", i - DateTime.Now.Ticks);
         }
+
         #endregion GenerateStringID
 
         #region 两表合并，得到新的合并结构
+
         /// <summary>
         /// 两表合并，得到新的合并结构
         /// </summary>
@@ -567,6 +615,7 @@ namespace Genersoft.GS.HBYHCWCommon
             {
                 dtReturn.Columns.Add(dt1.Columns[i].ColumnName);
             }
+
             for (int j = 0; j < dt2.Columns.Count; j++)
             {
                 if (!dtReturn.Columns.Contains(dt2.Columns[j].ColumnName))
@@ -609,20 +658,20 @@ namespace Genersoft.GS.HBYHCWCommon
 
                     if (workbook != null)
                     {
-                        sheet = workbook.GetSheetAt(0);//读取第一个sheet，当然也可以循环读取每个sheet
+                        sheet = workbook.GetSheetAt(0); //读取第一个sheet，当然也可以循环读取每个sheet
                         dataTable = new DataTable();
                         if (sheet != null)
                         {
-                            int rowCount = sheet.LastRowNum;//总行数
+                            int rowCount = sheet.LastRowNum; //总行数
                             if (rowCount > 0)
                             {
-                                IRow firstRow = sheet.GetRow(0);//第一行
-                                int cellCount = firstRow.LastCellNum;//列数
+                                IRow firstRow = sheet.GetRow(0); //第一行
+                                int cellCount = firstRow.LastCellNum; //列数
 
                                 //构建datatable的列
                                 if (isColumnName)
                                 {
-                                    startRow = ColumnCount;//有表头，从表头行数以下开始读取
+                                    startRow = ColumnCount; //有表头，从表头行数以下开始读取
                                     for (int i = firstRow.FirstCellNum; i < cellCount; ++i)
                                     {
                                         cell = firstRow.GetCell(i);
@@ -681,12 +730,14 @@ namespace Genersoft.GS.HBYHCWCommon
                                             }
                                         }
                                     }
+
                                     dataTable.Rows.Add(dataRow);
                                 }
                             }
                         }
                     }
                 }
+
                 return dataTable;
             }
             catch (Exception ex)
@@ -695,6 +746,7 @@ namespace Genersoft.GS.HBYHCWCommon
                 {
                     fs.Close();
                 }
+
                 throw ex;
             }
         }

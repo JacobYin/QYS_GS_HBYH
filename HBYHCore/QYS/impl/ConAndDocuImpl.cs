@@ -14,7 +14,7 @@ namespace Genersoft.GS.HBYHQYSCore.QYS.impl
     public class ConAndDocuImpl
     {
         /**
-         * 首先，通过存储过程获取到要上传的多个附件（或一个），然后把这些返回的id存在一个list里，之后创建合同需要用到这个包含文档id的list
+         * (双方签署场景)首先，通过存储过程获取到要上传的多个附件（或一个），然后把这些返回的id存在一个list里，之后创建合同需要用到这个包含文档id的list
          */
         public static string SetDoubleContract(string HTNM, string categoryID, string GaiZhangName,
             string GaiZhangContact)
@@ -208,11 +208,19 @@ namespace Genersoft.GS.HBYHQYSCore.QYS.impl
             return (string)contract_object["message"];
         }
 
+        /// <summary>
+        /// (单方签署场景)未设置，之后会编写单方签署场景代码
+        /// </summary>
+        /// <param name="HTNM"></param>
+        /// <returns></returns>
         public static string SetSingleContract(string HTNM)
         {
             return "NULL";
         }
 
+        /// <summary>
+        ///  设置电子签定时任务下载签署已完成的合同盖章后附件，将盖章后附件下载到ftp服务器后在HTFJ表插入一条新数据
+        /// </summary>
         public static void Get_Document()
         {
             IGSPDatabase db = GSPContext.Current.Database;
@@ -220,14 +228,16 @@ namespace Genersoft.GS.HBYHQYSCore.QYS.impl
             DataSet nds = db.RunProcGetDataSet("HBYHINTERFACE_QYS_DOWNLOAD_DownLoadList", nulparams, 1);
             if (nds != null && nds.Tables.Count > 0 && nds.Tables[0].Rows.Count > 0)
             {
+                HBYHCWCommon.CommonMgr.WriteLogFile("查询到要下载的合同结果：" + nds.Tables[0].Rows.Count);
                 for (int k = 0; k < nds.Tables[0].Rows.Count; k++)
                 {
                     DataRow row = nds.Tables[0].Rows[k];
                     string document_name =
                         HBYHQYSCommon.Restful.Get_document(row["DZHTID"].ToString(), row["LCDJZJID"].ToString());
-                    HBYHCWCommon.CommonMgr.WriteLogFile(document_name);
 
+                    HBYHCWCommon.CommonMgr.WriteLogFile(document_name);
                     HBYHCWCommon.CommonMgr.WriteLogFile("获取文件结果：" + document_name);
+
                     IDbDataParameter[] nparams = new IDbDataParameter[2];
                     nparams[0] = db.MakeInParam("DOCUMENTNAME", GSPDbDataType.VarChar, 36, document_name);
                     nparams[1] = db.MakeInParam("LCHTNM", GSPDbDataType.VarChar, 36, row["LCDJZJID"].ToString());
@@ -239,6 +249,46 @@ namespace Genersoft.GS.HBYHQYSCore.QYS.impl
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// 同步电子签公司认证情况，已认证的单位会修改ERP的集团往来单位定义自定义字段3的状态值为是
+        /// </summary>
+        public static void Sync_CompAuth()
+        {
+            IGSPDatabase db = GSPContext.Current.Database;
+            string resultHTML = HBYHQYSCommon.Restful.Get_Organization_Auth();
+            JObject deserializeObject = (JObject)JsonConvert.DeserializeObject(resultHTML);
+            JToken token = deserializeObject["result"];
+
+            //认证公司名称会放在一个list<string>里，用来存储已经认证成功的客户名称
+
+            List<string> rzmd = new List<string>();
+
+            foreach (var VARIABLE in token)
+            {
+                if ((string)VARIABLE["status"] == "AUTH_SUCCESS")
+                {
+                    rzmd.Add((string)VARIABLE["name"]);
+                }
+            }
+
+            string serializeObject = JsonConvert.SerializeObject(rzmd);
+            string result = serializeObject.TrimStart('[').TrimEnd(']').Replace('\"', '\'');
+
+            string sql_3 =
+                $"UPDATE LSWLDW L SET L.Customfield3 = '是' WHERE L.Lswldw_Dwmc IN ({result})";
+            int sqlStatement_result = db.ExecSqlStatement(sql_3);
+            if (sqlStatement_result >= 0)
+            {
+                HBYHCWCommon.CommonMgr.WriteLogFile("认证公司状态修改数据成功，影响数据：" + sqlStatement_result);
+            }
+            else
+            {
+                HBYHCWCommon.CommonMgr.WriteLogFile("认证公司状态修改数据失败，影响结果：" + sqlStatement_result);
+            }
+
+            db.Commit();
         }
     }
 }
