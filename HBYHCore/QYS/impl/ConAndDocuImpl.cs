@@ -14,9 +14,9 @@ namespace Genersoft.GS.HBYHQYSCore.QYS.impl
     public class ConAndDocuImpl
     {
         /**
-         * (双方签署场景)首先，通过存储过程获取到要上传的多个附件（或一个），然后把这些返回的id存在一个list里，之后创建合同需要用到这个包含文档id的list
+         * (双方签署场景_企业双方)首先，通过存储过程获取到要上传的多个附件（或一个），然后把这些返回的id存在一个list里，之后创建合同需要用到这个包含文档id的list
          */
-        public static string SetDoubleContract(string HTNM, string categoryID, string GaiZhangName,
+        public static string SetDoubleContract_Company(string HTNM, string categoryID, string GaiZhangName,
             string GaiZhangContact)
         {
             // 定义要上传的附件列表
@@ -209,13 +209,189 @@ namespace Genersoft.GS.HBYHQYSCore.QYS.impl
         }
 
         /// <summary>
-        /// (单方签署场景)未设置，之后会编写单方签署场景代码
+        /// (双方签署场景_对方个体户)首先，通过存储过程获取到要上传的多个附件（或一个），然后把这些返回的id存在一个list里，之后创建合同需要用到这个包含文档id的list
         /// </summary>
-        /// <param name="HTNM"></param>
-        /// <returns></returns>
-        public static string SetSingleContract(string HTNM)
+        public static string SetDoubleContract_Personal(string HTNM, string categoryID, string GaiZhangName,
+            string GaiZhangContact)
         {
-            return "NULL";
+            // 定义要上传的附件列表
+            List<string> documents = new List<string>();
+            IGSPDatabase db = GSPContext.Current.Database;
+            IDbDataParameter[] param = new IDbDataParameter[1];
+            param[0] = db.MakeInParam("HTNM", GSPDbDataType.VarChar, 36, HTNM);
+            DataSet ds = db.RunProcGetDataSet("HBYHINTERFACE_QYS_DOCUMENT_DOCUMENTINFO", param, 1);
+
+
+            if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
+            {
+                for (int i = 0; i < ds.Tables[0].Rows.Count; i++)
+                {
+                    DataRow row = ds.Tables[0].Rows[i];
+                    string htmc = row["HTMC"].ToString();
+                    string postresult = HBYHQYSCommon.Restful.Post_document(
+                        HBYHQYSCommon.Restful.NormalRestAddr.ADD_CONTRACTFILE_ADDR_TEST,
+                        row["FILENAME"].ToString(), row["FILETYPE"].ToString(), row["DJNM"].ToString());
+                    JObject oresult = (JObject)JsonConvert.DeserializeObject(postresult);
+                    if ((int)oresult["code"] == 0)
+                    {
+                        documents.Add(oresult["result"]["documentId"].ToString());
+                        byte[] byteArray = Guid.NewGuid().ToByteArray();
+                        uint id = BitConverter.ToUInt32(byteArray, 0);
+                        string s = oresult["result"]["documentId"].ToString();
+                        long documentid = Convert.ToInt64(s);
+                        DateTime now = DateTime.Now;
+                        string date = now.Year.ToString() + now.Month.ToString("00") + now.Day.ToString("00");
+                        string time = now.ToLongTimeString();
+                        //将数据插入到中间表当中去
+                        string sql =
+                            $@"insert into uf_es_record@OADB (ID, YYLCMC, LCDJZJID, GZQFJID, GZHFJID, MODEDATACREATERTYPE, MODEDATACREATEDATE, MODEDATACREATETIME)values ({id},'{htmc}', '{HTNM}', {documentid},0, 3, '{date}', '{time}')";
+                        int sqlStatement = db.ExecSqlStatement(sql);
+                        if (sqlStatement > 0)
+                        {
+                            HBYHCWCommon.CommonMgr.WriteLogFile("插入数据成功，影像数据：" + sqlStatement);
+                        }
+                        else
+                        {
+                            HBYHCWCommon.CommonMgr.WriteLogFile("插入数据失败，影响结果：" + sqlStatement);
+                        }
+                    }
+                    else
+                    {
+                        HBYHCWCommon.CommonMgr.WriteLogFile("推送数据失败，查看日志。");
+                    }
+                }
+            }
+
+            //当一个合同所有该盖章的附件全部上传后，之后就要创建合同，调用创建合同接口
+            ContractRequest contract = null;
+            List<Signatory> signatories = null;
+            IDbDataParameter[] nparams = new IDbDataParameter[1];
+            nparams[0] = db.MakeInParam("HTNM", GSPDbDataType.VarChar, 36, HTNM);
+            DataSet nds = db.RunProcGetDataSet("HBYHINTERFACE_QYS_CONTRACT_CONTRACTINFO", nparams, 1);
+
+            if (nds != null && nds.Tables.Count > 0 && nds.Tables[0].Rows.Count > 0)
+            {
+                DataRow row = nds.Tables[0].Rows[0];
+                contract = new ContractRequest();
+
+                //开始定义双签合同的各项信息
+                contract.subject = row["SUBJECT"].ToString();
+                contract.sn = row["SN"].ToString();
+                contract.description = row["DESCRIPTION"].ToString();
+                contract.categoryId = categoryID;
+                contract.send = JSONUtils.GetBoolean(row["SEND"].ToString());
+                contract.tenantName = row["TENANTNAME"].ToString();
+                contract.businessData = row["BUSINESSDATA"].ToString();
+                contract.creatorName = row["CREATORNAME"].ToString();
+                contract.autoCreateCounterSign = JSONUtils.GetBoolean(row["AUTOCREATECOUNTERSIGN"].ToString());
+                contract.extraSign = JSONUtils.GetBoolean(row["EXTRASIGN"].ToString());
+                contract.mustSign = JSONUtils.GetBoolean(row["MUSTSIGN"].ToString());
+                contract.signAll = Convert.ToInt32(row["SIGNALL"].ToString());
+                contract.msgCode = Convert.ToInt32(row["MSGCODE"].ToString());
+                contract.documents = documents;
+
+                //定义双方签署方的签署序列
+                signatories = new List<Signatory>();
+
+                //定义各签署方的信息
+                Signatory fqsignatory = new Signatory();
+                fqsignatory.tenantType = "COMPANY";
+                fqsignatory.tenantName = row["TENANTNAME"].ToString();
+                fqsignatory.serialNo = "1";
+                fqsignatory.remind = true;
+                fqsignatory.contact = row["WFYWDH"].ToString();
+                fqsignatory.receiverName = row["WFYEWUYUAN"].ToString();
+                fqsignatory.language = "zh_CN";
+
+                List<Action> fqfActions = new List<Action>();
+
+                //Action_1
+                Action WoFangQianzi = new Action();
+                WoFangQianzi.type = "PERSONAL";
+                WoFangQianzi.name = "我方业务员签字";
+                WoFangQianzi.serialNo = 1;
+
+                ActionOperator qianzirenyuan = new ActionOperator();
+                qianzirenyuan.operatorName = row["WFYEWUYUAN"].ToString();
+                qianzirenyuan.operatorContact = row["WFYWDH"].ToString();
+                WoFangQianzi.actionOperators = new List<ActionOperator>() { qianzirenyuan };
+
+
+                //Action_2
+                Action WoFangGaiZhang = new Action();
+                WoFangGaiZhang.type = "CORPORATE";
+                WoFangGaiZhang.name = "我方组织盖章";
+                WoFangGaiZhang.serialNo = 2;
+
+                ActionOperator gaizhangrenyuan = new ActionOperator();
+                gaizhangrenyuan.operatorName = GaiZhangName;
+                gaizhangrenyuan.operatorContact = GaiZhangContact;
+                WoFangGaiZhang.actionOperators = new List<ActionOperator>() { gaizhangrenyuan };
+
+                fqfActions.Add(WoFangQianzi);
+                fqfActions.Add(WoFangGaiZhang);
+                fqsignatory.actions = fqfActions;
+                signatories.Add(fqsignatory);
+
+
+                //签署方客户方信息添加
+                Signatory khsignatory = new Signatory();
+                khsignatory.tenantType = "PERSONAL";
+                khsignatory.tenantName = row["RECEIVERNAME"].ToString();
+                khsignatory.serialNo = "2";
+                khsignatory.remind = true;
+                khsignatory.contact = row["RECEIVERCONTACT"].ToString();
+                khsignatory.receiverName = row["RECEIVERNAME"].ToString();
+                khsignatory.language = "zh_CN";
+
+                List<Action> khfActions = new List<Action>();
+
+                //Action_3
+                Action DuiFangQianzi = new Action();
+                DuiFangQianzi.type = "PERSONAL";
+                DuiFangQianzi.name = "对方对接人员签字";
+                DuiFangQianzi.serialNo = 1;
+
+                ActionOperator dfqianzirenyuan = new ActionOperator();
+                dfqianzirenyuan.operatorName = row["RECEIVERNAME"].ToString();
+                dfqianzirenyuan.operatorContact = row["RECEIVERCONTACT"].ToString();
+                DuiFangQianzi.actionOperators = new List<ActionOperator>() { dfqianzirenyuan };
+                
+                
+                khfActions.Add(DuiFangQianzi);
+                khsignatory.actions = khfActions;
+
+
+                signatories.Add(khsignatory);
+                contract.signatories = signatories;
+            }
+
+            string serializecontract = JsonConvert.SerializeObject(contract);
+            HBYHCWCommon.CommonMgr.WriteLogFile("创建JSON内容：" + serializecontract);
+            string Contract_result =
+                HBYHQYSCommon.Restful.Post(HBYHQYSCommon.Restful.NormalRestAddr.CREATE_BYCATEGORY_ADDR_TEST,
+                    serializecontract);
+            JObject contract_object = (JObject)JsonConvert.DeserializeObject(Contract_result);
+            HBYHCWCommon.CommonMgr.WriteLogFile("已执行创建合同接口");
+            if ((int)contract_object["code"] == 0)
+            {
+                string contract_id = contract_object["contractId"].ToString();
+                long contract_sz = Convert.ToInt64(contract_id);
+                string sql_2 =
+                    $"UPDATE uf_es_record@OADB s SET s.QYSHTID = {contract_sz},s.QYSHTZTZ = 'draft',s.YYLCID = {categoryID} WHERE s.LCDJZJID = '{HTNM}'";
+                int sqlStatement_result = db.ExecSqlStatement(sql_2);
+                if (sqlStatement_result > 0)
+                {
+                    HBYHCWCommon.CommonMgr.WriteLogFile("修改数据成功，影响数据：" + sqlStatement_result);
+                }
+                else
+                {
+                    HBYHCWCommon.CommonMgr.WriteLogFile("修改数据失败，影响结果：" + sqlStatement_result);
+                }
+            }
+
+            db.Commit();
+            return (string)contract_object["message"];
         }
 
         /// <summary>
@@ -289,6 +465,186 @@ namespace Genersoft.GS.HBYHQYSCore.QYS.impl
             }
 
             db.Commit();
+        }
+        
+        /// <summary>
+        /// 双方为我方企业——单人盖章的情况，根据情况可自定义存储过程取数
+        /// </summary>
+        /// <param name="HTNM"></param>
+        /// <param name="categoryID"></param>
+        /// <param name="GaiZhangName"></param>
+        /// <param name="GaiZhangContact"></param>
+        /// <param name="ProcName"></param>
+        public static string SetDouble_Personal(string HTNM, string categoryID, string GaiZhangName,
+            string GaiZhangContact, string ProcName)
+        {
+            // 定义要上传的附件列表
+            List<string> documents = new List<string>();
+            IGSPDatabase db = GSPContext.Current.Database;
+            IDbDataParameter[] param = new IDbDataParameter[1];
+            param[0] = db.MakeInParam("HTNM", GSPDbDataType.VarChar, 36, HTNM);
+            DataSet ds = db.RunProcGetDataSet("HBYHINTERFACE_QYS_DOCUMENT_DOCUMENTINFO", param, 1);
+
+
+            if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
+            {
+                for (int i = 0; i < ds.Tables[0].Rows.Count; i++)
+                {
+                    DataRow row = ds.Tables[0].Rows[i];
+                    string htmc = row["HTMC"].ToString();
+                    string postresult = HBYHQYSCommon.Restful.Post_document(
+                        HBYHQYSCommon.Restful.NormalRestAddr.ADD_CONTRACTFILE_ADDR_TEST,
+                        row["FILENAME"].ToString(), row["FILETYPE"].ToString(), row["DJNM"].ToString());
+                    JObject oresult = (JObject)JsonConvert.DeserializeObject(postresult);
+                    if ((int)oresult["code"] == 0)
+                    {
+                        documents.Add(oresult["result"]["documentId"].ToString());
+                        byte[] byteArray = Guid.NewGuid().ToByteArray();
+                        uint id = BitConverter.ToUInt32(byteArray, 0);
+                        string s = oresult["result"]["documentId"].ToString();
+                        long documentid = Convert.ToInt64(s);
+                        DateTime now = DateTime.Now;
+                        string date = now.Year.ToString() + now.Month.ToString("00") + now.Day.ToString("00");
+                        string time = now.ToLongTimeString();
+                        //将数据插入到中间表当中去
+                        string sql =
+                            $@"insert into uf_es_record@OADB (ID, YYLCMC, LCDJZJID, GZQFJID, GZHFJID, MODEDATACREATERTYPE, MODEDATACREATEDATE, MODEDATACREATETIME)values ({id},'{htmc}', '{HTNM}', {documentid},0, 3, '{date}', '{time}')";
+                        int sqlStatement = db.ExecSqlStatement(sql);
+                        if (sqlStatement > 0)
+                        {
+                            HBYHCWCommon.CommonMgr.WriteLogFile("插入数据成功，影像数据：" + sqlStatement);
+                        }
+                        else
+                        {
+                            HBYHCWCommon.CommonMgr.WriteLogFile("插入数据失败，影响结果：" + sqlStatement);
+                        }
+                    }
+                    else
+                    {
+                        HBYHCWCommon.CommonMgr.WriteLogFile("推送数据失败，查看日志。");
+                    }
+                }
+            }
+
+            //当一个合同所有该盖章的附件全部上传后，之后就要创建合同，调用创建合同接口
+            ContractRequest contract = null;
+            List<Signatory> signatories = null;
+            IDbDataParameter[] nparams = new IDbDataParameter[1];
+            nparams[0] = db.MakeInParam("HTNM", GSPDbDataType.VarChar, 36, HTNM);
+            DataSet nds = db.RunProcGetDataSet(ProcName, nparams, 1);
+
+            if (nds != null && nds.Tables.Count > 0 && nds.Tables[0].Rows.Count > 0)
+            {
+                DataRow row = nds.Tables[0].Rows[0];
+                contract = new ContractRequest();
+
+                //开始定义双签合同的各项信息
+                contract.subject = row["SUBJECT"].ToString();
+                contract.sn = row["SN"].ToString();
+                contract.description = row["DESCRIPTION"].ToString();
+                contract.categoryId = categoryID;
+                contract.send = JSONUtils.GetBoolean(row["SEND"].ToString());
+                contract.tenantName = row["TENANTNAME"].ToString();
+                contract.businessData = row["BUSINESSDATA"].ToString();
+                contract.creatorName = row["CREATORNAME"].ToString();
+                contract.autoCreateCounterSign = JSONUtils.GetBoolean(row["AUTOCREATECOUNTERSIGN"].ToString());
+                contract.extraSign = JSONUtils.GetBoolean(row["EXTRASIGN"].ToString());
+                contract.mustSign = JSONUtils.GetBoolean(row["MUSTSIGN"].ToString());
+                contract.signAll = Convert.ToInt32(row["SIGNALL"].ToString());
+                contract.msgCode = Convert.ToInt32(row["MSGCODE"].ToString());
+                contract.documents = documents;
+
+                //定义双方签署方的签署序列
+                signatories = new List<Signatory>();
+
+                //定义各签署方的信息
+                Signatory fqsignatory = new Signatory();
+                fqsignatory.tenantType = "COMPANY";
+                fqsignatory.tenantName = row["TENANTNAME"].ToString();
+                fqsignatory.serialNo = "1";
+                fqsignatory.remind = true;
+                fqsignatory.contact = GaiZhangContact;
+                fqsignatory.receiverName = GaiZhangName;
+                fqsignatory.language = "zh_CN";
+
+                List<Action> fqfActions = new List<Action>();
+                
+
+                //Action_2
+                Action WoFangGaiZhang = new Action();
+                WoFangGaiZhang.type = "CORPORATE";
+                WoFangGaiZhang.name = "我方组织盖章";
+                WoFangGaiZhang.serialNo = 1;
+
+                ActionOperator gaizhangrenyuan = new ActionOperator();
+                gaizhangrenyuan.operatorName = GaiZhangName;
+                gaizhangrenyuan.operatorContact = GaiZhangContact;
+                WoFangGaiZhang.actionOperators = new List<ActionOperator>() { gaizhangrenyuan };
+
+                
+                fqfActions.Add(WoFangGaiZhang);
+                fqsignatory.actions = fqfActions;
+                signatories.Add(fqsignatory);
+
+
+                //签署方客户方信息添加
+                Signatory khsignatory = new Signatory();
+                khsignatory.tenantType = "PERSONAL";
+                khsignatory.tenantName = row["RECEIVERNAME"].ToString();
+                khsignatory.serialNo = "2";
+                khsignatory.remind = true;
+                khsignatory.contact = row["RECEIVERCONTACT"].ToString();
+                khsignatory.receiverName = row["RECEIVERNAME"].ToString();
+                khsignatory.language = "zh_CN";
+
+                List<Action> khfActions = new List<Action>();
+
+                //Action_3
+                Action DuiFangQianzi = new Action();
+                DuiFangQianzi.type = "PERSONAL";
+                DuiFangQianzi.name = "对方对接人员签字";
+                DuiFangQianzi.serialNo = 1;
+
+                ActionOperator dfqianzirenyuan = new ActionOperator();
+                dfqianzirenyuan.operatorName = row["RECEIVERNAME"].ToString();
+                dfqianzirenyuan.operatorContact = row["RECEIVERCONTACT"].ToString();
+                DuiFangQianzi.actionOperators = new List<ActionOperator>() { dfqianzirenyuan };
+                
+                
+                khfActions.Add(DuiFangQianzi);
+                khsignatory.actions = khfActions;
+
+
+                signatories.Add(khsignatory);
+                contract.signatories = signatories;
+            }
+
+            string serializecontract = JsonConvert.SerializeObject(contract);
+            HBYHCWCommon.CommonMgr.WriteLogFile("创建JSON内容：" + serializecontract);
+            string Contract_result =
+                HBYHQYSCommon.Restful.Post(HBYHQYSCommon.Restful.NormalRestAddr.CREATE_BYCATEGORY_ADDR_TEST,
+                    serializecontract);
+            JObject contract_object = (JObject)JsonConvert.DeserializeObject(Contract_result);
+            HBYHCWCommon.CommonMgr.WriteLogFile("已执行创建合同接口");
+            if ((int)contract_object["code"] == 0)
+            {
+                string contract_id = contract_object["contractId"].ToString();
+                long contract_sz = Convert.ToInt64(contract_id);
+                string sql_2 =
+                    $"UPDATE uf_es_record@OADB s SET s.QYSHTID = {contract_sz},s.QYSHTZTZ = 'draft',s.YYLCID = {categoryID} WHERE s.LCDJZJID = '{HTNM}'";
+                int sqlStatement_result = db.ExecSqlStatement(sql_2);
+                if (sqlStatement_result > 0)
+                {
+                    HBYHCWCommon.CommonMgr.WriteLogFile("修改数据成功，影响数据：" + sqlStatement_result);
+                }
+                else
+                {
+                    HBYHCWCommon.CommonMgr.WriteLogFile("修改数据失败，影响结果：" + sqlStatement_result);
+                }
+            }
+
+            db.Commit();
+            return (string)contract_object["message"];
         }
     }
 }
